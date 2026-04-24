@@ -1,0 +1,45 @@
+version: 0.2
+
+env:
+  variables:
+    IMAGE_REPO_NAME: ols-wp-webserver
+    AWS_DEFAULT_REGION: us-east-2
+
+phases:
+  pre_build:
+    commands:
+      - echo Logging in to ECR...
+      - ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+      - REPO_URI=$ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/$IMAGE_REPO_NAME
+      # Use git commit hash for unique, traceable image tags
+      - IMAGE_TAG=$(echo $CODEBUILD_RESOLVED_SOURCE_VERSION | cut -c 1-7)
+      - echo "Building image tag $IMAGE_TAG from commit $CODEBUILD_RESOLVED_SOURCE_VERSION"
+      - |
+        if ! aws ecr describe-repositories --repository-names $IMAGE_REPO_NAME --region $AWS_DEFAULT_REGION 2>/dev/null; then
+          echo "Creating ECR repository..."
+          aws ecr create-repository --repository-name $IMAGE_REPO_NAME --region $AWS_DEFAULT_REGION
+        else
+          echo "ECR repository already exists"
+        fi
+      - aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com
+
+  build:
+    commands:
+      - echo "Build started on $(date)"
+      - docker build -t $IMAGE_REPO_NAME:$IMAGE_TAG .
+      - docker tag $IMAGE_REPO_NAME:$IMAGE_TAG $REPO_URI:$IMAGE_TAG
+      - docker tag $IMAGE_REPO_NAME:$IMAGE_TAG $REPO_URI:latest
+
+  post_build:
+    commands:
+      - echo "Pushing image to ECR..."
+      - docker push $REPO_URI:$IMAGE_TAG
+      - docker push $REPO_URI:latest
+      - echo "Generating imagedefinitions.json..."
+      # CRITICAL: "name" must exactly match the container name in your ECS task definition
+      - printf '[{"name":"ols-container","imageUri":"%s"}]' $REPO_URI:$IMAGE_TAG > imagedefinitions.json
+      - cat imagedefinitions.json
+
+artifacts:
+  files:
+    - imagedefinitions.json
