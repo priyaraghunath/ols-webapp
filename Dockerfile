@@ -27,5 +27,5 @@ RUN chown -R lsadm:lsadm /var/www/vhosts/
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=3 \
   CMD curl -f http://localhost/health || exit 1
-
+#testingthepipeline
 EXPOSE 80
