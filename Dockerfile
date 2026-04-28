@@ -26,7 +26,7 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=3 \
 
 EXPOSE 80
 
-# Override the original entrypoint to inject DB credentials first
-COPY wp-entrypoint.sh /wp-entrypoint.sh
-RUN chmod +x /wp-entrypoint.sh
-ENTRYPOINT ["/wp-entrypoint.sh"]
+COPY docker-start.sh /docker-start.sh
+RUN chmod +x /docker-start.sh
+
+CMD ["/docker-start.sh"]
