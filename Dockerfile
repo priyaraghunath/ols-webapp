@@ -16,9 +16,6 @@ RUN echo "OK" > /var/www/vhosts/localhost/html/health
 
 RUN chown -R lsadm:lsadm /var/www/vhosts/
 
-COPY entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh
-
 ENV WORDPRESS_DB_HOST=placeholder
 ENV WORDPRESS_DB_USER=placeholder
 ENV WORDPRESS_DB_PASSWORD=placeholder
@@ -29,4 +26,7 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=3 \
 
 EXPOSE 80
 
-ENTRYPOINT ["/entrypoint.sh"]
+# Override the original entrypoint to inject DB credentials first
+COPY wp-entrypoint.sh /wp-entrypoint.sh
+RUN chmod +x /wp-entrypoint.sh
+ENTRYPOINT ["/wp-entrypoint.sh"]
